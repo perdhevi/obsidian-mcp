@@ -17,5 +17,11 @@
   "bugs": {
     "url": "https://github.com/perdhevi/obsidian-mcp/issues"
   },
-  "homepage": "https://github.com/perdhevi/obsidian-mcp#readme"
+  "homepage": "https://github.com/perdhevi/obsidian-mcp#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "express": "^5.2.1",
+    "gray-matter": "^4.0.3",
+    "zod": "^4.6.5"
+  }
 }
