@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
-import matter from "gray-matter";
+import { parseFrontmatter } from "./frontmatter.js";
 
 const SKIP = /(^|\/)\.(obsidian|trash|git)(\/|$)/;
 
@@ -17,7 +17,7 @@ const LINK = /\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]/g;
 const TAG = /(?:^|\s)#([\p{L}\p{N}_\/-]+)/gu;
 
 export function parseNote(rel, raw) {
-    const { data, content } = matter(raw);
+    const { data, content } = parseFrontmatter(raw);
     const title = path.basename(rel, ".md");
     const links = [...content.matchAll(LINK)].map((m) => m[1].trim());
     const fmTags = [].concat(data.tags ?? []).map(String);
