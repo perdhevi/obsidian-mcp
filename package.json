@@ -19,9 +19,13 @@
   },
   "homepage": "https://github.com/perdhevi/obsidian-mcp#readme",
   "dependencies": {
+    "@lancedb/lancedb": "^0.39.0",
     "@modelcontextprotocol/sdk": "^1.32.0",
     "express": "^5.2.1",
     "gray-matter": "^4.0.3",
     "zod": "^4.6.5"
+  },
+  "overrides": {
+    "sharp": "^0.35.4"
   }
 }
