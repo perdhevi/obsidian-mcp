@@ -4,6 +4,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { PORT } from "./config.js";
 import { readNote } from "./vault.js";
+import { embedQuery } from "./embed.js";
+import { search } from "./store.js";
+
 
 const text = (t) => ({ content: [{ type: "text", text: t }] });
 const fail = (t) => ({ ...text(t), isError: true });
@@ -11,6 +14,7 @@ const fail = (t) => ({ ...text(t), isError: true });
 function buildServer() {
     const server = new McpServer({ name: "vault", version: "0.1.0" });
 
+    //Getting the note from a vault
     server.registerTool("get_note", {
         description: "Read one Obsidian note by its vault-relative path, e.g. 'Projects/Idea.md'.",
         inputSchema: { path: z.string().describe("Vault-relative path ending in .md") },
@@ -22,6 +26,34 @@ function buildServer() {
         } catch (e) {
             return fail(`Could not read ${path}: ${e.message}`);
         }
+    });
+
+    //Search vault with what to look for
+    server.registerTool("search_vault", {
+        description:
+            "Semantic search over the user's Obsidian notes. Use it when the user asks about " +
+            "something they may have written down. Returns matching sections with their note " +
+            "path; call get_note on a path to read the whole note.",
+        inputSchema: {
+            query: z.string().describe("What to look for, in natural language"),
+            limit: z.number().int().min(1).max(20).default(5),
+            folder: z.string().optional().describe("Restrict to a vault folder, e.g. 'Projects'"),
+        },
+        annotations: { readOnlyHint: true },
+    }, async ({ query, limit, folder }) => {
+        const hits = await search(await embedQuery(query), { limit: limit * 3, folder });
+        // Keep the best chunk per note so one long note can't fill every slot
+        const seen = new Set(), best = [];
+        for (const h of hits) {
+            if (seen.has(h.path)) continue;
+            seen.add(h.path); best.push(h);
+            if (best.length === limit) break;
+        }
+        if (!best.length) return text("No matching notes.");
+        return text(best.map((h, i) =>
+            `${i + 1}. ${h.path}${h.heading ? " > " + h.heading : ""} (score ${(1 - h._distance).toFixed(2)})\n` +
+            h.text.slice(0, 300).replace(/\s+/g, " ")
+        ).join("\n\n"));
     });
 
     return server;
