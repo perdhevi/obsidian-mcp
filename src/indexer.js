@@ -3,6 +3,7 @@ import { VAULT } from "./config.js";
 import { listNotes, parseNote, hashOf } from "./parse.js";
 import { embedDocs } from "./embed.js";
 import { replaceNote, removeNote } from "./store.js";
+import { setLinks, dropNote } from "./links.js";
 
 export async function indexFile(rel) {
     const abs = `${VAULT}/${rel}`;
@@ -13,13 +14,27 @@ export async function indexFile(rel) {
         id: `${rel}#${c.idx}`, path: rel, heading: c.heading, text: c.text, vector: vectors[i],
     }));
     await replaceNote({ path: rel, hash: hashOf(raw), mtime: stat.mtimeMs }, rows);
+    setLinks(rel, note.links)
     return note;
 }
 
-export { removeNote as removeFile };
+
+export async function removeFile(rel) {
+    await removeNote(rel);
+    dropNote(rel);
+}
 
 export async function fullReindex() {
     const files = await listNotes(VAULT);
     for (const rel of files) { await indexFile(rel); console.error("indexed", rel); }
+    return files.length;
+}
+
+export async function loadAllLinks() {
+    const files = await listNotes(VAULT);
+    for (const rel of files) {
+        const raw = await fs.readFile(`${VAULT}/${rel}`, "utf8");
+        setLinks(rel, parseNote(rel, raw).links);
+    }
     return files.length;
 }

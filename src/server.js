@@ -6,6 +6,8 @@ import { PORT } from "./config.js";
 import { readNote } from "./vault.js";
 import { embedQuery } from "./embed.js";
 import { search } from "./store.js";
+import { backlinksOf } from "./links.js";
+import { loadAllLinks } from "./indexer.js";
 
 
 const text = (t) => ({ content: [{ type: "text", text: t }] });
@@ -56,6 +58,16 @@ function buildServer() {
         ).join("\n\n"));
     });
 
+    //Getting backlinks
+    server.registerTool("get_backlinks", {
+        description: "List notes that link to the given note. Use it to explore related notes the user connected on purpose.",
+        inputSchema: { path: z.string().describe("Vault-relative path of the target note") },
+        annotations: { readOnlyHint: true },
+    }, async ({ path }) => {
+        const srcs = backlinksOf(path);
+        return text(srcs.length ? srcs.map((s) => `- ${s}`).join("\n") : `Nothing links to ${path}.`);
+    });
+
     return server;
 }
 
@@ -78,4 +90,8 @@ app.post("/mcp", async (req, res) => {
 });
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
+
+
+console.error("links loaded for", await loadAllLinks(), "notes");
+
 app.listen(PORT, "127.0.0.1", () => console.error(`vault MCP on :${PORT}/mcp`));
