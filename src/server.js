@@ -3,7 +3,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { PORT } from "./config.js";
-import { readNote } from "./vault.js";
+import { readNote, normRel, createInboxNote } from "./vault.js";
 import { embedQuery } from "./embed.js";
 import { search } from "./store.js";
 import { backlinksOf } from "./links.js";
@@ -43,7 +43,7 @@ function buildServer() {
         },
         annotations: { readOnlyHint: true },
     }, async ({ query, limit, folder }) => {
-        const hits = await search(await embedQuery(query), { limit: limit * 3, folder });
+        const hits = await search(await embedQuery(query), { limit: limit * 3, folder: folder && normRel(folder) });
         // Keep the best chunk per note so one long note can't fill every slot
         const seen = new Set(), best = [];
         for (const h of hits) {
@@ -64,8 +64,26 @@ function buildServer() {
         inputSchema: { path: z.string().describe("Vault-relative path of the target note") },
         annotations: { readOnlyHint: true },
     }, async ({ path }) => {
-        const srcs = backlinksOf(path);
+        const srcs = backlinksOf(normRel(path));
         return text(srcs.length ? srcs.map((s) => `- ${s}`).join("\n") : `Nothing links to ${path}.`);
+    });
+
+    server.registerTool("create_note", {
+        description:
+            "Create a NEW note in the user's Obsidian inbox. It cannot edit or overwrite existing notes. " +
+            "Use it only when the user asks you to save or write something down.",
+        inputSchema: {
+            title: z.string().min(1).max(100),
+            content: z.string().describe("Markdown body, without frontmatter"),
+            tags: z.array(z.string()).optional(),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    }, async ({ title, content, tags }) => {
+        try {
+            return text(`Created ${await createInboxNote(title, content, tags)}`);
+        } catch (e) {
+            return fail(e.code === "EEXIST" ? `A note named "${title}" already exists in the inbox. Choose another title.` : e.message);
+        }
     });
 
     return server;
