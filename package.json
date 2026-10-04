@@ -21,6 +21,7 @@
   "dependencies": {
     "@lancedb/lancedb": "^0.39.0",
     "@modelcontextprotocol/sdk": "^1.32.0",
+    "chokidar": "^5.0.0",
     "express": "^5.2.1",
     "yaml": "^2.9.1",
     "zod": "^4.6.5"

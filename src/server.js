@@ -7,8 +7,8 @@ import { readNote } from "./vault.js";
 import { embedQuery } from "./embed.js";
 import { search } from "./store.js";
 import { backlinksOf } from "./links.js";
-import { loadAllLinks } from "./indexer.js";
-
+import { loadAllLinks, reconcile } from "./indexer.js";
+import { enqueue, startWatcher } from "./watcher.js";
 
 const text = (t) => ({ content: [{ type: "text", text: t }] });
 const fail = (t) => ({ ...text(t), isError: true });
@@ -93,5 +93,8 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 
 
 console.error("links loaded for", await loadAllLinks(), "notes");
+
+await enqueue(async () => console.error("reconciled", await reconcile(), "notes"));
+startWatcher();
 
 app.listen(PORT, "127.0.0.1", () => console.error(`vault MCP on :${PORT}/mcp`));
